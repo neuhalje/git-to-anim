@@ -13,7 +13,6 @@ class User(object):
         self.name = name
         self.email = email
 
-
     def validate(self, context):
         assert self.email and len(self.email) > 0, "User: email not set"
         assert self.name and len(self.name) > 0, "User: name not set"
@@ -75,7 +74,15 @@ class ExecutionContext(object):
             u.validate(self)
 
 
-Command = str
+class Command(object):
+    def __init__(self, cmd: str):
+        self.cmd = cmd
+
+    def format(self, context: ExecutionContext, git_repo: GitRepo):
+        user = context.user_repo.get(git_repo.user)
+        return self.cmd.format(repo=git_repo, user=user)
+
+
 Commands = List[Command]
 
 
@@ -89,11 +96,10 @@ class CommandSet(object):
                                                f"repo ${self.repo} in  " \
                                                f"context."
 
-    def _to_command_strings(self, context: ExecutionContext):
-        git_repo = context.git_repos[self.repo]
-        user = context.user_repo.get(git_repo.user)
+    def _format_commands(self, context: ExecutionContext):
+        repo = context.git_repos[self.repo]
+        return [c.format(context, repo) for c in self.commands]
 
-        return [ s.format(repo=git_repo, user=user) for s in self.commands]
 
 CommandSets = List[CommandSet]
 
@@ -154,19 +160,17 @@ def load_script(script) -> Script:
 
         assert current_repo, "Context needs to be set"
 
-        command_sets.append(CommandSet(current_repo, script))
+        command_sets.append(CommandSet(current_repo, [Command(s) for s in
+                                                      script]))
 
     return Script(script_id, ExecutionContext(user_repo, git_repos),
                   command_sets)
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     s = load_script(open("tests/example-command.yaml", 'r'))
     s.validate()
 
     for cs in s.commands:
-        for c in cs._to_command_strings(s.context):
+        for c in cs._format_commands(s.context):
             print(c)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
