@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from copy import copy
 from typing import Type, Dict, List
 
 import yaml
@@ -40,6 +41,24 @@ class Remote(object):
 
 
 Remotes = Type[Dict[str, Remote]]
+
+
+class RemoteWrapper(Remote):
+
+    @staticmethod
+    def wrap(r: Remote, context, wdir: str) -> Remote:
+        return RemoteWrapper(r.name, r.repo, context, wdir)
+
+    def __init__(self, name: str, repo: RepoId, context, wdir: str):
+        super().__init__(name, repo)
+        self.context = context
+        self.wdir = wdir
+
+    def remote_path(self):
+        return os.path.join(self.wdir, self.context.git_repos[self.repo].path)
+
+    def repository(self):
+        return self.context.git_repos[self.repo]
 
 
 class GitRepo(object):
@@ -100,7 +119,12 @@ class Command(object):
 
     def format(self, context: ExecutionContext, git_repo: GitRepo) -> str:
         user = context.user_repo.get(git_repo.user)
-        return self.cmd.format(repo=git_repo, user=user)
+        repo = git_repo
+        user = user
+        git_repos = context.git_repos
+        users = context.user_repo
+
+        return eval("f'{}'".format(self.cmd))
 
     def _ensure_in_dir(self, directory: str):
         if os.path.isfile(directory):
@@ -121,8 +145,8 @@ class Command(object):
         try:
             self._ensure_in_dir(git_repo.path)
             result = subprocess.run(command, shell=True, capture_output=True)
-            return CommandExecutionResult(self, command,  result.stdout.decode(
-                                              sys.stdout.encoding),
+            return CommandExecutionResult(self, command, result.stdout.decode(
+                sys.stdout.encoding),
                                           result.stderr.decode(
                                               sys.stderr.encoding),
                                           result.returncode, git_repo.path)
@@ -148,7 +172,11 @@ class CommandSet(object):
         return [c.format(context, repo) for c in self.commands]
 
     def execute(self, wdir: str, context: ExecutionContext):
-        repo = context.git_repos[self.repo]
+        repo = copy(context.git_repos[self.repo])
+        remotes = {}
+        for rid in repo.remotes:
+            remotes[rid] = RemoteWrapper.wrap(repo.remotes[rid], context, wdir)
+        repo.remotes = remotes
         return [c.execute(wdir, context, repo) for c in self.commands]
 
 

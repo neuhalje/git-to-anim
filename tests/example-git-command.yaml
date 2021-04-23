@@ -25,10 +25,29 @@ repos:
       - name: origin
         repo: upstream
 commands:
-  - script:
+  - context: upstream
+    script:
+      - git init --bare .
+
+  - context: mine
+    script:
     - git init .
     - git config --local user.name "{user.name}"
     - git config --local user.email "{user.email}"
-    - echo Please, please > README
-    - cat README
-    context: mine
+
+  - context: mine
+    script:
+      - echo Please, please > README
+      - git add README
+      - git commit -m"1st post"
+
+  - context: mine
+    script:
+      - git remote add {repo.remotes["origin"].name}  "{repo.remotes["origin"].remote_path()}"
+      - git remote -v
+      - git push -u {repo.remotes["origin"].name}  master
+
+  - context: upstream
+    script:
+        - echo in upstream
+        - git log
