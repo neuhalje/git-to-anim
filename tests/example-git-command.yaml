@@ -26,17 +26,9 @@ repos:
         repo: upstream
 commands:
   - script:
-    - echo hallo
-    - echo on line 2
+    - git init .
+    - git config --local user.name "{user.name}"
+    - git config --local user.email "{user.email}"
+    - echo Please, please > README
+    - cat README
     context: mine
-  - script:
-    - echo hallo2, also in alice context
-    - pwd
-  - context: bobs
-    script:
-      - "echo hello from bob: {repo.user}"
-      - "echo hello from bob: is bare== {repo.bare}"
-  - context: upstream
-    script:
-      - "echo hello from bob: {repo.user}"
-      - "echo hello from bob: is bare== {repo.bare}"

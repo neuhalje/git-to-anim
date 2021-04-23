@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 import tempfile
 from typing import Type, Dict, List
 
@@ -58,6 +60,8 @@ class GitRepo(object):
 
         for r in self.remotes.values():
             r.validate(context)
+        if self.user:
+            assert self.user in context.user_repo, "{self.user} should be in user repo"
 
 
 GitRepos = Type[Dict[RepoId, GitRepo]]
@@ -77,15 +81,17 @@ class ExecutionContext(object):
 
 
 class CommandExecutionResult(object):
-    def __init__(self, command, formatted_command:str, stdout: str, stderr:
-    str,
-                 exit_code: int, pwd: str):
+    def __init__(self, command, formatted_command: str, stdout: str,
+                 stderr: str, exit_code: int, pwd: str):
         self.formatted_command = formatted_command
         self.pwd = pwd
         self.stderr = stderr
         self.stdout = stdout
         self.command = command
         self.exit_code = exit_code
+
+    def __repr__(self) -> str:
+        return f"{self.formatted_command} -> {self.exit_code} : {self.stdout}"
 
 
 class Command(object):
@@ -114,11 +120,14 @@ class Command(object):
 
         try:
             self._ensure_in_dir(git_repo.path)
-            print(command)
+            result = subprocess.run(command, shell=True, capture_output=True)
+            return CommandExecutionResult(self, command,  result.stdout.decode(
+                                              sys.stdout.encoding),
+                                          result.stderr.decode(
+                                              sys.stderr.encoding),
+                                          result.returncode, git_repo.path)
         finally:
             os.chdir(cwd)
-        return CommandExecutionResult(self, command, "stdout", "stderr", 0,
-                                      git_repo.path)
 
 
 Commands = List[Command]
@@ -174,6 +183,7 @@ class Script(object):
 
         return ScriptResult(wdir, results)
 
+
 def load_script(script) -> Script:
     s = yaml.safe_load(script)
     script_id = s["id"]
@@ -225,13 +235,11 @@ def load_script(script) -> Script:
 
 
 if __name__ == '__main__':
-    s = load_script(open("tests/example-command.yaml", 'r'))
+    s = load_script(open("tests/example-git-command.yaml", 'r'))
     s.validate()
 
     result = s.execute()
 
     print(f"temp: {result.wdir}")
-    for cr  in result.results:
-        print(cr.formatted_command)
-
-
+    for cr in result.results:
+        print(cr)
