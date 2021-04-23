@@ -89,6 +89,11 @@ class CommandSet(object):
                                                f"repo ${self.repo} in  " \
                                                f"context."
 
+    def _to_command_strings(self, context: ExecutionContext):
+        git_repo = context.git_repos[self.repo]
+        user = context.user_repo.get(git_repo.user)
+
+        return [ s.format(repo=git_repo, user=user) for s in self.commands]
 
 CommandSets = List[CommandSet]
 
@@ -159,5 +164,9 @@ def load_script(script) -> Script:
 if __name__ == '__main__':
     s = load_script(open("tests/example-command.yaml", 'r'))
     s.validate()
+
+    for cs in s.commands:
+        for c in cs._to_command_strings(s.context):
+            print(c)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

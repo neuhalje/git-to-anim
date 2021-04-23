@@ -33,4 +33,9 @@ commands:
     - echo hallo2, also in alice context
   - context: bobs
     script:
-      - echo hello from bob
+      - "echo hello from bob: {repo.user}"
+      - "echo hello from bob: is bare== {repo.bare}"
+  - context: upstream
+    script:
+      - "echo hello from bob: {repo.user}"
+      - "echo hello from bob: is bare== {repo.bare}"
