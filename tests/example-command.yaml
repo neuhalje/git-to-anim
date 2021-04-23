@@ -1,0 +1,36 @@
+id : abc
+user:
+  alice:
+    name: Alice
+    email: alice@example.com
+  bob:
+    name: Bob
+    email: bob@example.com
+repos:
+  upstream:
+    path: upstream.git
+    bare: Y
+  mine:
+    path: mine
+    bare: N
+    user: alice
+    remotes:
+      - name: origin
+        repo: upstream
+  bobs:
+    path: bob
+    bare: N
+    user: bob
+    remotes:
+      - name: origin
+        repo: upstream
+commands:
+  - script:
+    - echo hallo
+    - echo on line 2
+    context: mine
+  - script:
+    - echo hallo2, also in alice context
+  - context: bobs
+    script:
+      - echo hello from bob
