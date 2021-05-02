@@ -262,6 +262,52 @@ def load_script(script) -> Script:
                   command_sets)
 
 
+class Renderer(object):
+    __TO_DOT="""
+if [[ ${PWD} == "/tmp/"* ]];then
+                echo 'digraph git {'
+                echo 'graph [bgcolor=transparent]'
+
+                git rev-list -g --all --pretty='tformat:  "%H" [label="%h"]; "%H-msg" [label="%s" margin="0" shape="none" ]; "%H" -> "%H-msg" [K="0.0" arrowhead="none" style="dotted" dir="backward"]; {rank=same "%H" "%H-msg"}'|grep -v ^commit|sort|uniq
+
+                echo
+                git show-ref -s | while read ref; do
+                    git log --pretty='tformat:  %H -> { %P };' $ref | sed 's/[0-9a-f][0-9a-f]*/\"&\"/g'
+                done | sort | uniq
+                echo
+
+                # branch label
+                git branch -l  --format='"%(refname:lstrip=2)" [label="%(refname:lstrip=2)" shape="cds" style="filled" fillcolor="darkgoldenrod1" ]; "%(refname:lstrip=2)" -> "%(objectname)"  [arrowhead="none"];{rank=same "%(refname:lstrip=2)" "%(objectname)"};'
+
+                git branch -l -r  --format='"%(refname:lstrip=2)" [label="%(refname:lstrip=2)" shape="cds" style="filled,dashed" fillcolor="darkgoldenrod1" ]; "%(refname:lstrip=2)" -> "%(objectname)"  [arrowhead="none"];{rank=same "%(refname:lstrip=2)" "%(objectname)"};'
+
+                git tag -l  --format='"%(objectname)" [label="Tag: %(refname:lstrip=2)" shape="box" style="filled" ]; "%(object)" -> "%(objectname)" [arrowhead="none"];{rank=same "%(objectname)" "%(object)"};'
+
+                # ranking
+                echo "}"
+            else
+                echo "ERROR: Will only run in /tmp but repo='${PWD}'" >&1
+                exit 1
+            fi
+    """
+
+    def __init__(self):
+        self.to_dot = Command(self.__TO_DOT)
+        self.steps = []
+
+    def pre_exec(self, wdir: str, context: ExecutionContext,
+                git_repo: GitRepo):
+        pass
+
+    def post_exec(self, wdir: str, context: ExecutionContext,
+                git_repo: GitRepo):
+        r = self.to_dot.execute(wdir, context, git_repo)
+        self.steps.append(r.stdout)
+
+    def render(self) -> str:
+        return ""
+
+
 if __name__ == '__main__':
     s = load_script(open("tests/example-git-command.yaml", 'r'))
     s.validate()
